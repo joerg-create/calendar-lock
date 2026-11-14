@@ -119,7 +119,7 @@ struct WallpaperView: View {
                 Text(agenda.date.formatted(.dateTime.weekday(.wide).day().month(.wide)))
                     .font(.system(size: fontSize * 0.85, weight: .medium, design: .rounded))
                     .opacity(0.7)
-                if settings.showWeekNumber {
+                if settings.showWeekNumber && showsWeekNumber(for: agenda) {
                     Spacer(minLength: 0)
                     Text("KW \(MonthGrid.weekNumber(of: agenda.date))")
                         .font(.system(size: fontSize * 0.78, weight: .semibold, design: .rounded).monospacedDigit())
@@ -172,6 +172,12 @@ struct WallpaperView: View {
                 .truncationMode(.tail)
         }
         .frame(height: fontSize * Layout.rowHeightFactor)
+    }
+
+    /// Tomorrow only repeats the week number when a new week starts.
+    private func showsWeekNumber(for agenda: DayAgenda) -> Bool {
+        guard !Calendar.current.isDate(agenda.date, inSameDayAs: content.today.date) else { return true }
+        return MonthGrid.weekNumber(of: agenda.date) != MonthGrid.weekNumber(of: content.today.date)
     }
 
     private func timeLabel(for item: AgendaItem) -> String {
