@@ -100,7 +100,7 @@ struct ContentView: View {
                 Button {
                     runShortcut()
                 } label: {
-                    Label("Jetzt auf Sperrbildschirm setzen", systemImage: "lock.rotation")
+                    Label("Jetzt auf Sperrbildschirm setzen", systemImage: "arrow.clockwise")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)

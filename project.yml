@@ -33,7 +33,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Calendar Lock
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "Calendar Lock liest deine heutigen Termine, um sie auf dein Sperrbildschirm-Hintergrundbild zu zeichnen. Die Daten verlassen dein iPhone nicht."
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "Calendar Lock liest deine Termine von heute und den nächsten Tagen, um sie auf dein Sperrbildschirm-Hintergrundbild zu zeichnen. Die Daten verlassen dein iPhone nicht."
         INFOPLIST_KEY_NSRemindersFullAccessUsageDescription: "Calendar Lock liest deine offenen Erinnerungen, um sie auf dein Sperrbildschirm-Hintergrundbild zu zeichnen. Die Daten verlassen dein iPhone nicht."
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   CalendarLockTests:
