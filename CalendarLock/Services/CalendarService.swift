@@ -89,6 +89,30 @@ final class CalendarService {
         )
     }
 
+    /// Start-of-day dates in the month of `date` that have at least one event,
+    /// for the dots in the month overview.
+    func daysWithEvents(inMonthOf date: Date, settings: WallpaperSettings) -> Set<Date> {
+        guard hasEventAccess,
+              let month = Calendar.current.dateInterval(of: .month, for: date)
+        else { return [] }
+        let calendars = filtered(store.calendars(for: .event), by: settings.calendarIDs)
+        guard !calendars.isEmpty else { return [] }
+        let predicate = store.predicateForEvents(withStart: month.start, end: month.end, calendars: calendars)
+        var days = Set<Date>()
+        let calendar = Calendar.current
+        for event in store.events(matching: predicate) {
+            // Multi-day events mark every day they touch inside the month.
+            var day = calendar.startOfDay(for: max(event.startDate, month.start))
+            let last = min(event.endDate, month.end)
+            repeat {
+                days.insert(day)
+                guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                day = next
+            } while day < last
+        }
+        return days
+    }
+
     // MARK: Helpers
 
     private func filtered(_ calendars: [EKCalendar], by ids: Set<String>) -> [EKCalendar] {

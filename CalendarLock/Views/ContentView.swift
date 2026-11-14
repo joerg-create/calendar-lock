@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct ContentView: View {
@@ -9,13 +10,18 @@ struct ContentView: View {
     @State private var reminderLists: [CalendarService.Source] = []
     @State private var preview: UIImage?
     @State private var errorText: String?
+    @State private var photoItem: PhotosPickerItem?
+    @State private var photo = PhotoStore.load()
 
     var body: some View {
         NavigationStack {
             Form {
                 if hasAccess {
                     previewSection
+                    artworkSection
                     appearanceSection
+                    extrasSection
+                    WeatherSection(settings: $settings)
                     sourcesSection
                     SetupGuideSection()
                 } else {
@@ -30,6 +36,10 @@ struct ContentView: View {
         .task(id: settings) {
             settings.save()
             await renderPreview()
+        }
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task { await usePhoto(item) }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
@@ -87,6 +97,34 @@ struct ContentView: View {
         .allowsHitTesting(false)
     }
 
+    private var artworkSection: some View {
+        Section {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(Artwork.allCases) { artwork in
+                        ArtworkThumbnail(
+                            artwork: artwork,
+                            theme: settings.theme,
+                            photo: artwork == .photo ? photo : nil,
+                            isSelected: settings.artwork == artwork
+                        )
+                        .onTapGesture { settings.artwork = artwork }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            if settings.artwork == .photo {
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    Label(photo != nil ? "Anderes Foto wählen" : "Foto wählen", systemImage: "photo")
+                }
+            }
+        } header: {
+            Text("Hintergrund")
+        } footer: {
+            Text("Die Motive verändern sich jeden Tag ein wenig. Ihre Farben kommen vom Farbthema.")
+        }
+    }
+
     private var appearanceSection: some View {
         Section("Aussehen") {
             Picker("Farbthema", selection: $settings.theme) {
@@ -102,6 +140,13 @@ struct ContentView: View {
             Toggle("Erinnerungen anzeigen", isOn: $settings.showReminders)
             Toggle("Morgen auch anzeigen", isOn: $settings.showTomorrow)
             Toggle("Vergangene Termine ausblenden", isOn: $settings.hidePastEvents)
+        }
+    }
+
+    private var extrasSection: some View {
+        Section("Kalenderwochen") {
+            Toggle("Kalenderwoche anzeigen", isOn: $settings.showWeekNumber)
+            Toggle("Monatsübersicht mit KW", isOn: $settings.showMonth)
         }
     }
 
@@ -136,6 +181,17 @@ struct ContentView: View {
         hasAccess = await CalendarService.shared.requestAccess(includeReminders: settings.showReminders)
         await reloadSources()
         await renderPreview()
+    }
+
+    private func usePhoto(_ item: PhotosPickerItem) async {
+        if let data = try? await item.loadTransferable(type: Data.self), PhotoStore.save(data) {
+            photo = PhotoStore.load()
+            settings.artwork = .photo
+            await renderPreview()
+        } else {
+            errorText = "Das Foto konnte nicht geladen werden."
+        }
+        photoItem = nil
     }
 
     private func reloadSources() async {
@@ -244,6 +300,99 @@ private struct SetupGuideSection: View {
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.accentColor.opacity(0.15)))
             Text(text)
+        }
+    }
+}
+
+/// A small live preview of one background motif.
+private struct ArtworkThumbnail: View {
+    let artwork: Artwork
+    let theme: WallpaperTheme
+    let photo: UIImage?
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                WallpaperBackground(theme: theme, artwork: artwork, photo: photo, seed: 7)
+                if artwork == .photo && photo == nil {
+                    Image(systemName: "photo.badge.plus")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 66, height: 132)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: isSelected ? 3 : 1)
+            )
+            Text(artwork.label)
+                .font(.caption)
+                .foregroundStyle(isSelected ? .primary : .secondary)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(artwork.label)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// Turns the forecast on and lets the user search for a place.
+private struct WeatherSection: View {
+    @Binding var settings: WallpaperSettings
+    @State private var query = ""
+    @State private var results: [WeatherLocation] = []
+    @State private var isSearching = false
+    @State private var message: String?
+
+    var body: some View {
+        Section {
+            Toggle("Wetter für 5 Tage", isOn: $settings.showWeather)
+            if settings.showWeather {
+                if let location = settings.weatherLocation {
+                    LabeledContent("Ort", value: location.name)
+                }
+                HStack {
+                    TextField("Ort suchen, z. B. Hamburg", text: $query)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit { Task { await search() } }
+                    if isSearching {
+                        ProgressView()
+                    } else {
+                        Button("Suchen") { Task { await search() } }
+                            .disabled(query.trimmingCharacters(in: .whitespaces).count < 2)
+                    }
+                }
+                ForEach(results, id: \.self) { place in
+                    Button(place.name) {
+                        settings.weatherLocation = place
+                        results = []
+                        query = ""
+                    }
+                }
+                if let message {
+                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Wetter")
+        } footer: {
+            Text("Das Wetter steht direkt unter der Uhr. Wetterdaten von Open-Meteo.com (CC BY 4.0).")
+        }
+    }
+
+    private func search() async {
+        isSearching = true
+        defer { isSearching = false }
+        do {
+            results = try await WeatherService.searchPlaces(query)
+            message = results.isEmpty ? "Kein Ort gefunden." : nil
+        } catch {
+            results = []
+            message = "Die Suche hat nicht geklappt. Bist du online?"
         }
     }
 }

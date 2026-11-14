@@ -17,20 +17,38 @@ enum WallpaperError: Error, LocalizedError, CustomLocalizedStringResourceConvert
     var errorDescription: String? { String(localized: localizedStringResource) }
 }
 
-/// Collects the agenda and turns it into a wallpaper image at screen resolution.
+/// Collects agenda, weather and month and turns them into a wallpaper image
+/// at screen resolution.
 enum WallpaperBuilder {
     @MainActor
-    static func makeImage(settings: WallpaperSettings, now: Date = Date()) async throws -> UIImage {
+    static func makeContent(settings: WallpaperSettings, now: Date = Date()) async throws -> WallpaperContent {
         let service = CalendarService.shared
         guard service.hasEventAccess else { throw WallpaperError.noCalendarAccess }
 
-        let today = await service.agenda(for: now, settings: settings, includeReminders: true, now: now)
-        var tomorrow: DayAgenda?
+        var content = WallpaperContent(
+            now: now,
+            today: await service.agenda(for: now, settings: settings, includeReminders: true, now: now)
+        )
         if settings.showTomorrow, let next = Calendar.current.date(byAdding: .day, value: 1, to: now) {
-            tomorrow = await service.agenda(for: next, settings: settings, includeReminders: false, now: now)
+            content.tomorrow = await service.agenda(for: next, settings: settings, includeReminders: false, now: now)
         }
+        if settings.showMonth {
+            content.month = MonthGrid.make(for: now)
+            content.eventDays = service.daysWithEvents(inMonthOf: now, settings: settings)
+        }
+        if settings.showWeather, let location = settings.weatherLocation {
+            content.forecast = await WeatherService.forecast(for: location, days: 5, now: now)
+        }
+        if settings.artwork == .photo {
+            content.photo = PhotoStore.load()
+        }
+        return content
+    }
 
-        guard let image = WallpaperRenderer.image(today: today, tomorrow: tomorrow, settings: settings) else {
+    @MainActor
+    static func makeImage(settings: WallpaperSettings, now: Date = Date()) async throws -> UIImage {
+        let content = try await makeContent(settings: settings, now: now)
+        guard let image = WallpaperRenderer.image(content: content, settings: settings) else {
             throw WallpaperError.renderingFailed
         }
         return image
@@ -54,9 +72,9 @@ enum WallpaperRenderer {
         return (size, scale)
     }
 
-    static func image(today: DayAgenda, tomorrow: DayAgenda?, settings: WallpaperSettings) -> UIImage? {
+    static func image(content: WallpaperContent, settings: WallpaperSettings) -> UIImage? {
         let (size, scale) = screen
-        let view = WallpaperView(today: today, tomorrow: tomorrow, settings: settings, size: size)
+        let view = WallpaperView(content: content, settings: settings, size: size)
         let renderer = ImageRenderer(content: view)
         renderer.scale = scale
         renderer.proposedSize = ProposedViewSize(size)
