@@ -101,6 +101,9 @@ struct ContentView: View {
                     runShortcut()
                 } label: {
                     Label("Jetzt auf Sperrbildschirm setzen", systemImage: "arrow.clockwise")
+                        // Inside a Form the icon is tinted with the accent color,
+                        // which makes it invisible on the prominent button.
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
