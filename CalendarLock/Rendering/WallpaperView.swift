@@ -13,6 +13,7 @@ struct WallpaperContent {
     var month: MonthGrid?
     var eventDays: Set<Date> = []
     var photo: UIImage?
+    var photoFraming = PhotoEntry()
 
     static func sample(now: Date = Date()) -> WallpaperContent {
         func event(_ id: String, _ title: String, hours: Double, allDay: Bool = false, _ color: RGBColor) -> AgendaItem {
@@ -67,7 +68,8 @@ struct WallpaperView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            WallpaperBackground(theme: theme, artwork: settings.artwork, photo: content.photo, seed: daySeed)
+            WallpaperBackground(theme: theme, artwork: settings.artwork, photo: content.photo,
+                                framing: content.photoFraming, dimming: settings.photoDimming, seed: daySeed)
 
             VStack(spacing: fontSize * Layout.blockSpacing) {
                 if showsWeather {

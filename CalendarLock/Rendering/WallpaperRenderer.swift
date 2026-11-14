@@ -39,8 +39,9 @@ enum WallpaperBuilder {
         if settings.showWeather, let location = settings.weatherLocation {
             content.forecast = await WeatherService.forecast(for: location, days: 5, now: now)
         }
-        if settings.artwork == .photo {
-            content.photo = PhotoStore.load()
+        if settings.artwork == .photo, let photo = PhotoStore.photo(for: now) {
+            content.photo = photo.image
+            content.photoFraming = photo.entry
         }
         return content
     }

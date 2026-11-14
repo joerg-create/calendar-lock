@@ -10,8 +10,9 @@ struct ContentView: View {
     @State private var reminderLists: [CalendarService.Source] = []
     @State private var preview: UIImage?
     @State private var errorText: String?
-    @State private var photoItem: PhotosPickerItem?
-    @State private var photo = PhotoStore.load()
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var photos: [PhotoEntry] = PhotoStore.entries()
+    @State private var editingPhoto: PhotoEntry?
 
     var body: some View {
         NavigationStack {
@@ -37,9 +38,26 @@ struct ContentView: View {
             settings.save()
             await renderPreview()
         }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            Task { await usePhoto(item) }
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await addPhotos(items) }
+        }
+        .sheet(item: $editingPhoto) { entry in
+            if let image = PhotoStore.image(for: entry) {
+                PhotoEditorView(
+                    entry: entry,
+                    image: image,
+                    dimming: settings.photoDimming,
+                    onSave: { updated in
+                        PhotoStore.update(updated)
+                        photosChanged()
+                    },
+                    onDelete: { removed in
+                        PhotoStore.delete(removed)
+                        photosChanged()
+                    }
+                )
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
@@ -105,7 +123,7 @@ struct ContentView: View {
                         ArtworkThumbnail(
                             artwork: artwork,
                             theme: settings.theme,
-                            photo: artwork == .photo ? photo : nil,
+                            photo: artwork == .photo ? photos.first.flatMap(PhotoStore.thumbnail(for:)) : nil,
                             isSelected: settings.artwork == artwork
                         )
                         .onTapGesture { settings.artwork = artwork }
@@ -113,16 +131,35 @@ struct ContentView: View {
                 }
                 .padding(.vertical, 4)
             }
-            if settings.artwork == .photo {
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label(photo != nil ? "Anderes Foto wählen" : "Foto wählen", systemImage: "photo")
+
+            PhotosPicker(selection: $photoItems, maxSelectionCount: 30, matching: .images) {
+                Label("Eigene Fotos hinzufügen", systemImage: "photo.badge.plus")
+            }
+
+            if settings.artwork == .photo && !photos.isEmpty {
+                PhotoStrip(photos: photos, today: todaysPhotoID) { entry in
+                    editingPhoto = entry
+                }
+                VStack(alignment: .leading) {
+                    Text("Abdunkeln")
+                    Slider(value: $settings.photoDimming, in: 0...1)
                 }
             }
         } header: {
             Text("Hintergrund")
         } footer: {
-            Text("Die Motive verändern sich jeden Tag ein wenig. Ihre Farben kommen vom Farbthema.")
+            if settings.artwork == .photo {
+                Text(photos.count > 1
+                     ? "Jeden Tag kommt das nächste Foto dran. Tippe auf ein Foto, um den Ausschnitt zu verschieben oder es zu entfernen."
+                     : "Tippe auf das Foto, um den Ausschnitt zu verschieben. Mit mehreren Fotos wechselt der Hintergrund jeden Tag.")
+            } else {
+                Text("Die Motive verändern sich jeden Tag ein wenig. Ihre Farben kommen vom Farbthema.")
+            }
         }
+    }
+
+    private var todaysPhotoID: UUID? {
+        PhotoStore.rotationIndex(count: photos.count, date: Date()).map { photos[$0].id }
     }
 
     private var appearanceSection: some View {
@@ -183,15 +220,25 @@ struct ContentView: View {
         await renderPreview()
     }
 
-    private func usePhoto(_ item: PhotosPickerItem) async {
-        if let data = try? await item.loadTransferable(type: Data.self), PhotoStore.save(data) {
-            photo = PhotoStore.load()
-            settings.artwork = .photo
-            await renderPreview()
-        } else {
-            errorText = "Das Foto konnte nicht geladen werden."
+    private func addPhotos(_ items: [PhotosPickerItem]) async {
+        var failed = 0
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self), PhotoStore.add(data) != nil {
+                continue
+            }
+            failed += 1
         }
-        photoItem = nil
+        photoItems = []
+        settings.artwork = .photo
+        photosChanged()
+        if failed > 0 {
+            errorText = failed == 1 ? "Ein Foto konnte nicht geladen werden." : "\(failed) Fotos konnten nicht geladen werden."
+        }
+    }
+
+    private func photosChanged() {
+        photos = PhotoStore.entries()
+        Task { await renderPreview() }
     }
 
     private func reloadSources() async {
@@ -335,6 +382,48 @@ private struct ArtworkThumbnail: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(artwork.label)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// The user's photos in order. The one shown today is marked.
+private struct PhotoStrip: View {
+    let photos: [PhotoEntry]
+    let today: UUID?
+    let onSelect: (PhotoEntry) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(photos) { entry in
+                    Button { onSelect(entry) } label: {
+                        ZStack(alignment: .bottom) {
+                            if let thumb = PhotoStore.thumbnail(for: entry) {
+                                PhotoFill(image: thumb, framing: entry)
+                            } else {
+                                Color.secondary.opacity(0.2)
+                            }
+                            if entry.id == today {
+                                Text("Heute")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(.ultraThinMaterial))
+                                    .padding(4)
+                            }
+                        }
+                        .frame(width: 54, height: 108)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(entry.id == today ? Color.accentColor : .clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(entry.id == today ? "Foto von heute, Ausschnitt bearbeiten" : "Foto, Ausschnitt bearbeiten")
+                }
+            }
+            .padding(.vertical, 4)
+        }
     }
 }
 

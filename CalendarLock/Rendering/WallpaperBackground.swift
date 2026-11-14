@@ -24,6 +24,9 @@ struct WallpaperBackground: View {
     let theme: WallpaperTheme
     let artwork: Artwork
     var photo: UIImage?
+    var framing = PhotoEntry()
+    /// How much a photo is darkened, 0...1.
+    var dimming: Double = 0.5
     /// Changes the random layout; the wallpaper uses the day of the year,
     /// so the motif shifts a little every day.
     var seed: UInt64 = 1
@@ -57,20 +60,14 @@ struct WallpaperBackground: View {
             Canvas { context, size in drawBokeh(in: &context, size: size) }
         case .photo:
             if let photo {
-                GeometryReader { proxy in
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipped()
-                }
-                // Darken the lower part so the agenda stays readable on any photo.
+                PhotoFill(image: photo, framing: framing)
+                // Darken the lower part more, so the agenda stays readable on any photo.
                 LinearGradient(
                     stops: [
-                        .init(color: .black.opacity(0.10), location: 0),
-                        .init(color: .black.opacity(0.15), location: 0.30),
-                        .init(color: .black.opacity(0.55), location: 0.60),
-                        .init(color: .black.opacity(0.65), location: 1),
+                        .init(color: .black.opacity(0.2 * dimming), location: 0),
+                        .init(color: .black.opacity(0.3 * dimming), location: 0.30),
+                        .init(color: .black.opacity(min(1.1 * dimming, 0.9)), location: 0.60),
+                        .init(color: .black.opacity(min(1.3 * dimming, 0.92)), location: 1),
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -187,6 +184,43 @@ struct WallpaperBackground: View {
             let color = accents[index % accents.count]
             light.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(color))
         }
+    }
+}
+
+/// Fills its frame with a photo, zoomed and moved so the photo's focus point
+/// sits as close to the middle as the photo's edges allow.
+struct PhotoFill: View {
+    let image: UIImage
+    let framing: PhotoEntry
+
+    var body: some View {
+        GeometryReader { proxy in
+            let rect = Self.frame(imageSize: image.size, in: proxy.size, framing: framing)
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: rect.width, height: rect.height)
+                .offset(x: rect.minX, y: rect.minY)
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
+        }
+        .clipped()
+    }
+
+    /// Where the image is drawn inside a frame of `size`, in the frame's coordinates.
+    static func frame(imageSize: CGSize, in size: CGSize, framing: PhotoEntry) -> CGRect {
+        guard imageSize.width > 0, imageSize.height > 0 else { return CGRect(origin: .zero, size: size) }
+        let zoom = min(max(framing.zoom, PhotoEntry.zoomRange.lowerBound), PhotoEntry.zoomRange.upperBound)
+        let fill = max(size.width / imageSize.width, size.height / imageSize.height) * CGFloat(zoom)
+        let drawn = CGSize(width: imageSize.width * fill, height: imageSize.height * fill)
+        func origin(_ focus: Double, drawn: CGFloat, frame: CGFloat) -> CGFloat {
+            let wanted = frame / 2 - CGFloat(focus) * drawn
+            return min(0, max(frame - drawn, wanted))
+        }
+        return CGRect(
+            x: origin(framing.focusX, drawn: drawn.width, frame: size.width),
+            y: origin(framing.focusY, drawn: drawn.height, frame: size.height),
+            width: drawn.width,
+            height: drawn.height
+        )
     }
 }
 

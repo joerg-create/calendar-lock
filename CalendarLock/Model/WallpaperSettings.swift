@@ -15,6 +15,8 @@ struct WallpaperSettings: Codable, Hashable {
     /// Shows a 5-day forecast above the agenda.
     var showWeather: Bool = false
     var weatherLocation: WeatherLocation?
+    /// How much an own photo is darkened behind the text, 0...1.
+    var photoDimming: Double = 0.5
     /// Calendar identifiers to show. Empty means every calendar.
     var calendarIDs: Set<String> = []
     /// Reminder list identifiers to show. Empty means every list.
@@ -37,6 +39,7 @@ struct WallpaperSettings: Codable, Hashable {
         showMonth = (try? c.decodeIfPresent(Bool.self, forKey: .showMonth)) ?? d.showMonth
         showWeather = (try? c.decodeIfPresent(Bool.self, forKey: .showWeather)) ?? d.showWeather
         weatherLocation = try? c.decodeIfPresent(WeatherLocation.self, forKey: .weatherLocation)
+        photoDimming = (try? c.decodeIfPresent(Double.self, forKey: .photoDimming)) ?? d.photoDimming
         calendarIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .calendarIDs)) ?? d.calendarIDs
         reminderListIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .reminderListIDs)) ?? d.reminderListIDs
     }
@@ -95,7 +98,7 @@ enum Artwork: String, Codable, CaseIterable, Identifiable {
         case .stars: "Sterne"
         case .waves: "Wellen"
         case .bokeh: "Lichter"
-        case .photo: "Eigenes Foto"
+        case .photo: "Eigene Fotos"
         }
     }
 }
