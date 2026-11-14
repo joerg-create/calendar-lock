@@ -1,6 +1,6 @@
 name: CalendarLock
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: de.joerg
   deploymentTarget:
     iOS: "17.0"
   developmentLanguage: de
@@ -9,7 +9,8 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: GCLLF993LY
+    CODE_SIGN_STYLE: Automatic
 targets:
   CalendarLock:
     type: application
@@ -18,7 +19,7 @@ targets:
       - CalendarLock
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.calendarlock
+        PRODUCT_BUNDLE_IDENTIFIER: de.joerg.calendarlock
         PRODUCT_NAME: CalendarLock
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
@@ -37,7 +38,7 @@ targets:
       - target: CalendarLock
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.calendarlock.tests
+        PRODUCT_BUNDLE_IDENTIFIER: de.joerg.calendarlock.tests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   CalendarLock:

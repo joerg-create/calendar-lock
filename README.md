@@ -16,7 +16,7 @@ xcodegen
 open CalendarLock.xcodeproj
 ```
 
-Danach in Xcode unter *Signing & Capabilities* dein Team wählen und die Bundle-ID (`com.example.calendarlock`) auf eine eigene ändern. Dann auf dem iPhone starten.
+Team (`DEVELOPMENT_TEAM`) und Bundle-ID (`de.joerg.calendarlock`) stehen in `project.yml`, die Signierung läuft automatisch. Wer mit einem anderen Apple-Konto baut, ändert beides dort und führt `xcodegen` erneut aus. Dann in Xcode das iPhone wählen und starten.
 
 Die Tests laufen mit ⌘U oder:
 
