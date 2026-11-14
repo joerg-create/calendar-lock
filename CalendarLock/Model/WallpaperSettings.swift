@@ -6,7 +6,8 @@ struct WallpaperSettings: Codable, Hashable {
     var artwork: Artwork = .aurora
     var textSize: TextSize = .medium
     var showReminders: Bool = true
-    var showTomorrow: Bool = false
+    /// How many days after today are listed under "Nächste Tage" (0...4).
+    var daysAhead: Int = 3
     var hidePastEvents: Bool = true
     /// Shows the ISO calendar week ("KW 46") next to the date.
     var showWeekNumber: Bool = true
@@ -20,6 +21,7 @@ struct WallpaperSettings: Codable, Hashable {
     var weatherTop: Double = 0.28
     /// How much an own photo is darkened behind the text, 0...1.
     var photoDimming: Double = 0.5
+    static let maxDaysAhead = 4
     static let weatherTopRange: ClosedRange<Double> = 0.22...0.42
 
     /// Calendar identifiers to show. Empty means every calendar.
@@ -38,7 +40,7 @@ struct WallpaperSettings: Codable, Hashable {
         artwork = (try? c.decodeIfPresent(Artwork.self, forKey: .artwork)) ?? d.artwork
         textSize = (try? c.decodeIfPresent(TextSize.self, forKey: .textSize)) ?? d.textSize
         showReminders = (try? c.decodeIfPresent(Bool.self, forKey: .showReminders)) ?? d.showReminders
-        showTomorrow = (try? c.decodeIfPresent(Bool.self, forKey: .showTomorrow)) ?? d.showTomorrow
+        daysAhead = min(max((try? c.decodeIfPresent(Int.self, forKey: .daysAhead)) ?? d.daysAhead, 0), Self.maxDaysAhead)
         hidePastEvents = (try? c.decodeIfPresent(Bool.self, forKey: .hidePastEvents)) ?? d.hidePastEvents
         showWeekNumber = (try? c.decodeIfPresent(Bool.self, forKey: .showWeekNumber)) ?? d.showWeekNumber
         showMonth = (try? c.decodeIfPresent(Bool.self, forKey: .showMonth)) ?? d.showMonth

@@ -175,7 +175,9 @@ struct ContentView: View {
                 }
             }
             Toggle("Erinnerungen anzeigen", isOn: $settings.showReminders)
-            Toggle("Morgen auch anzeigen", isOn: $settings.showTomorrow)
+            Stepper(value: $settings.daysAhead, in: 0...WallpaperSettings.maxDaysAhead) {
+                LabeledContent("Nächste Tage", value: settings.daysAhead == 0 ? "aus" : "\(settings.daysAhead)")
+            }
             Toggle("Vergangene Termine ausblenden", isOn: $settings.hidePastEvents)
         }
     }

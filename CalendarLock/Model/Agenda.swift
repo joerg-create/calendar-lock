@@ -80,4 +80,38 @@ enum AgendaLayout {
         let visibleCount = max(maxRows - 1, 0)
         return (Array(items.prefix(visibleCount)), items.count - visibleCount)
     }
+
+    /// One line in the "Nächste Tage" list.
+    struct UpcomingRow: Identifiable, Hashable {
+        var day: Date
+        /// True for the first line of a day, which shows the day label.
+        var startsDay: Bool
+        var item: AgendaItem
+
+        var id: String { "\(day.timeIntervalSince1970)-\(item.id)" }
+    }
+
+    /// Flattens the coming days into one list, skipping days without events,
+    /// and cuts it to `maxRows` (one row is kept for "+ N weitere" when cut).
+    static func upcomingRows(_ days: [DayAgenda], maxRows: Int) -> (rows: [UpcomingRow], hidden: Int) {
+        let all = days.flatMap { day in
+            day.events.map { UpcomingRow(day: day.date, startsDay: false, item: $0) }
+        }
+        let fitted = fit(all.map(\.item), maxRows: maxRows)
+        var rows = Array(all.prefix(fitted.visible.count))
+        for index in rows.indices {
+            rows[index].startsDay = index == 0 || rows[index - 1].day != rows[index].day
+        }
+        return (rows, fitted.hidden)
+    }
+
+    /// Splits the available rows between today and the coming days: today gets
+    /// what it needs, but at most about half when coming days have events too.
+    static func splitRows(total: Int, todayCount: Int, upcomingCount: Int) -> (today: Int, upcoming: Int) {
+        let total = max(total, 1)
+        guard upcomingCount > 0 else { return (total, 0) }
+        let todayShare = max(1, min(max(todayCount, 1), Int((Double(total) * 0.5).rounded(.up))))
+        return (todayShare, max(total - todayShare, 1))
+    }
 }
+

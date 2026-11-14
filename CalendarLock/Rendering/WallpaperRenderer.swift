@@ -29,8 +29,11 @@ enum WallpaperBuilder {
             now: now,
             today: await service.agenda(for: now, settings: settings, includeReminders: true, now: now)
         )
-        if settings.showTomorrow, let next = Calendar.current.date(byAdding: .day, value: 1, to: now) {
-            content.tomorrow = await service.agenda(for: next, settings: settings, includeReminders: false, now: now)
+        if settings.daysAhead > 0 {
+            for offset in 1...min(settings.daysAhead, WallpaperSettings.maxDaysAhead) {
+                guard let day = Calendar.current.date(byAdding: .day, value: offset, to: now) else { continue }
+                content.upcoming.append(await service.agenda(for: day, settings: settings, includeReminders: false, now: now))
+            }
         }
         if settings.showMonth {
             content.month = MonthGrid.make(for: now)

@@ -8,7 +8,8 @@ extension RGBColor {
 struct WallpaperContent {
     var now: Date
     var today: DayAgenda
-    var tomorrow: DayAgenda?
+    /// The days after today, in order, for "Nächste Tage".
+    var upcoming: [DayAgenda] = []
     var forecast: [DailyForecast] = []
     var month: MonthGrid?
     var eventDays: Set<Date> = []
@@ -36,7 +37,19 @@ struct WallpaperContent {
             DailyForecast(date: Calendar.current.date(byAdding: .day, value: offset, to: Calendar.current.startOfDay(for: now))!,
                           code: [0, 2, 3, 61, 71][offset], high: Double(12 - offset), low: Double(4 - offset))
         }
-        return WallpaperContent(now: now, today: today, tomorrow: nil, forecast: forecast, month: MonthGrid.make(for: now))
+        let upcoming = (1...3).map { offset -> DayAgenda in
+            let day = Calendar.current.date(byAdding: .day, value: offset, to: Calendar.current.startOfDay(for: now))!
+            let base = day.addingTimeInterval(9 * 3600)
+            return DayAgenda(date: day, events: offset == 2 ? [] : [
+                AgendaItem(id: "u\(offset)a", kind: .event, title: offset == 1 ? "Brunch bei Lena" : "Elternabend",
+                           start: base, end: base.addingTimeInterval(3600), isAllDay: false, isOverdue: false,
+                           color: RGBColor(red: 0.2, green: 0.6, blue: 0.95)),
+                AgendaItem(id: "u\(offset)b", kind: .event, title: "Sport", start: base.addingTimeInterval(8 * 3600),
+                           end: base.addingTimeInterval(9 * 3600), isAllDay: false, isOverdue: false,
+                           color: RGBColor(red: 0.3, green: 0.8, blue: 0.5)),
+            ], reminders: [])
+        }
+        return WallpaperContent(now: now, today: today, upcoming: upcoming, forecast: forecast, month: MonthGrid.make(for: now))
     }
 }
 
@@ -87,9 +100,9 @@ struct WallpaperView: View {
 
                 VStack(alignment: .leading, spacing: fontSize * 0.9) {
                     section(for: content.today, title: "Heute", maxRows: rowBudget.today)
-                    if let tomorrow = content.tomorrow {
+                    if hasUpcoming {
                         Divider().overlay(textColor.opacity(0.25))
-                        section(for: tomorrow, title: "Morgen", maxRows: rowBudget.tomorrow)
+                        upcomingSection(maxRows: rowBudget.upcoming)
                     }
                 }
                 .padding(fontSize)
@@ -163,6 +176,48 @@ struct WallpaperView: View {
         }
     }
 
+    private var hasUpcoming: Bool { content.upcoming.contains { !$0.events.isEmpty } }
+
+    @ViewBuilder
+    private func upcomingSection(maxRows: Int) -> some View {
+        let fitted = AgendaLayout.upcomingRows(content.upcoming, maxRows: maxRows)
+        VStack(alignment: .leading, spacing: fontSize * 0.45) {
+            Text("Nächste Tage")
+                .font(.system(size: fontSize * 1.05, weight: .bold, design: .rounded))
+            ForEach(fitted.rows) { line in
+                HStack(alignment: .center, spacing: fontSize * 0.55) {
+                    Text(line.startsDay ? dayLabel(line.day) : "")
+                        .font(.system(size: fontSize * 0.85, weight: .bold, design: .rounded).monospacedDigit())
+                        .frame(width: fontSize * 3.3, alignment: .leading)
+                    Capsule()
+                        .fill(line.item.color.color)
+                        .frame(width: fontSize * 0.22, height: fontSize * 1.15)
+                    Text(line.item.isAllDay ? "ganzt." : timeLabel(for: line.item))
+                        .font(.system(size: fontSize * 0.85, weight: .semibold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(textColor.opacity(0.75))
+                        .frame(width: fontSize * 3.0, alignment: .leading)
+                    Text(line.item.title)
+                        .font(.system(size: fontSize, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .frame(height: fontSize * Layout.rowHeightFactor)
+            }
+            if fitted.hidden > 0 {
+                Text("+ \(fitted.hidden) weitere")
+                    .font(.system(size: fontSize * 0.85, weight: .medium, design: .rounded))
+                    .opacity(0.65)
+            }
+        }
+    }
+
+    /// "Mo 16." for a day in the coming-days list.
+    private func dayLabel(_ date: Date) -> String {
+        let weekday = date.formatted(.dateTime.weekday(.abbreviated)).replacingOccurrences(of: ".", with: "")
+        let day = Calendar.current.component(.day, from: date)
+        return "\(weekday) \(day)."
+    }
+
     @ViewBuilder
     private func row(for item: AgendaItem) -> some View {
         HStack(alignment: .center, spacing: fontSize * 0.55) {
@@ -221,17 +276,17 @@ struct WallpaperView: View {
         return MonthOverview.height(weeks: month.weeks.count, fontSize: small) + fontSize * (1.6 + Layout.blockSpacing)
     }
 
-    /// How many agenda rows fit for today and tomorrow.
-    private var rowBudget: (today: Int, tomorrow: Int) {
+    /// How many agenda rows fit for today and the coming days.
+    private var rowBudget: (today: Int, upcoming: Int) {
         let rowStep = fontSize * (Layout.rowHeightFactor + 0.45)
         let headerHeight = fontSize * 1.9
         var available = size.height * (Layout.contentBottom - contentTop) - fontSize * 2
         available -= monthHeight + headerHeight
-        if content.tomorrow != nil { available -= headerHeight + fontSize * 1.8 }
+        if hasUpcoming { available -= headerHeight + fontSize * 1.8 }
         let rows = max(Int(available / rowStep), 1)
-        guard content.tomorrow != nil else { return (rows, 0) }
-        let todayRows = max(Int((Double(rows) * 0.62).rounded()), 1)
-        return (todayRows, max(rows - todayRows, 1))
+        let todayCount = content.today.events.count + content.today.reminders.count
+        let upcomingCount = content.upcoming.reduce(0) { $0 + $1.events.count }
+        return AgendaLayout.splitRows(total: rows, todayCount: todayCount, upcomingCount: hasUpcoming ? upcomingCount : 0)
     }
 }
 
