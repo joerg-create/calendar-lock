@@ -60,6 +60,18 @@ struct WallpaperView: View {
         usesPhoto ? Color.black.opacity(0.28) : Color.white.opacity(theme.cardOpacity)
     }
     private var showsWeather: Bool { settings.showWeather && !content.forecast.isEmpty }
+    private var weatherFontSize: CGFloat { fontSize * 0.82 }
+    private var weatherTop: CGFloat {
+        CGFloat(min(max(settings.weatherTop, WallpaperSettings.weatherTopRange.lowerBound), WallpaperSettings.weatherTopRange.upperBound))
+    }
+    /// Height of the weather card in points.
+    private var weatherCardHeight: CGFloat { weatherFontSize * (WeatherStrip.heightFactor + 0.9) }
+    /// Where the agenda starts: below the weather when it is shown, otherwise
+    /// below the clock and the Lock Screen widgets.
+    private var contentTop: CGFloat {
+        guard showsWeather else { return Layout.contentTop }
+        return weatherTop + (weatherCardHeight + fontSize * Layout.blockSpacing) / size.height
+    }
     private var showsMonth: Bool { settings.showMonth && content.month != nil }
 
     private var daySeed: UInt64 {
@@ -72,13 +84,6 @@ struct WallpaperView: View {
                                 framing: content.photoFraming, dimming: settings.photoDimming, seed: daySeed)
 
             VStack(spacing: fontSize * Layout.blockSpacing) {
-                if showsWeather {
-                    WeatherStrip(days: content.forecast, fontSize: fontSize, textColor: textColor)
-                        .padding(.vertical, fontSize * 0.6)
-                        .padding(.horizontal, fontSize * 0.5)
-                        .frame(width: size.width - 2 * margin)
-                        .background(card)
-                }
 
                 VStack(alignment: .leading, spacing: fontSize * 0.9) {
                     section(for: content.today, title: "Heute", maxRows: rowBudget.today)
@@ -100,7 +105,16 @@ struct WallpaperView: View {
                         .background(card)
                 }
             }
-            .padding(.top, size.height * Layout.contentTop)
+            .padding(.top, size.height * contentTop)
+
+            if showsWeather {
+                WeatherStrip(days: content.forecast, fontSize: weatherFontSize, textColor: textColor)
+                    .padding(.vertical, weatherFontSize * 0.45)
+                    .padding(.horizontal, weatherFontSize * 0.5)
+                    .frame(width: size.width - 2 * margin)
+                    .background(card)
+                    .padding(.top, size.height * weatherTop)
+            }
         }
         .frame(width: size.width, height: size.height)
         .foregroundStyle(textColor)
@@ -200,11 +214,6 @@ struct WallpaperView: View {
         static let blockSpacing: CGFloat = 0.7
     }
 
-    /// Height in points of the weather card, including the spacing below it.
-    private var weatherHeight: CGFloat {
-        showsWeather ? fontSize * (WeatherStrip.heightFactor + 1.2 + Layout.blockSpacing) : 0
-    }
-
     /// Height in points of the month card, including the spacing above it.
     private var monthHeight: CGFloat {
         guard showsMonth, let month = content.month else { return 0 }
@@ -216,8 +225,8 @@ struct WallpaperView: View {
     private var rowBudget: (today: Int, tomorrow: Int) {
         let rowStep = fontSize * (Layout.rowHeightFactor + 0.45)
         let headerHeight = fontSize * 1.9
-        var available = size.height * (Layout.contentBottom - Layout.contentTop) - fontSize * 2
-        available -= weatherHeight + monthHeight + headerHeight
+        var available = size.height * (Layout.contentBottom - contentTop) - fontSize * 2
+        available -= monthHeight + headerHeight
         if content.tomorrow != nil { available -= headerHeight + fontSize * 1.8 }
         let rows = max(Int(available / rowStep), 1)
         guard content.tomorrow != nil else { return (rows, 0) }
@@ -233,7 +242,7 @@ struct WeatherStrip: View {
     let textColor: Color
 
     /// Height of the strip in multiples of `fontSize`, used for the layout budget.
-    static let heightFactor: CGFloat = 3.9
+    static let heightFactor: CGFloat = 3.6
 
     var body: some View {
         HStack(spacing: 0) {

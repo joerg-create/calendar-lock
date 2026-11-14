@@ -15,8 +15,13 @@ struct WallpaperSettings: Codable, Hashable {
     /// Shows a 5-day forecast above the agenda.
     var showWeather: Bool = false
     var weatherLocation: WeatherLocation?
+    /// Where the weather row starts, as a fraction of the screen height.
+    /// Right below the clock is about 0.27; with Lock Screen widgets about 0.35.
+    var weatherTop: Double = 0.28
     /// How much an own photo is darkened behind the text, 0...1.
     var photoDimming: Double = 0.5
+    static let weatherTopRange: ClosedRange<Double> = 0.22...0.42
+
     /// Calendar identifiers to show. Empty means every calendar.
     var calendarIDs: Set<String> = []
     /// Reminder list identifiers to show. Empty means every list.
@@ -39,17 +44,19 @@ struct WallpaperSettings: Codable, Hashable {
         showMonth = (try? c.decodeIfPresent(Bool.self, forKey: .showMonth)) ?? d.showMonth
         showWeather = (try? c.decodeIfPresent(Bool.self, forKey: .showWeather)) ?? d.showWeather
         weatherLocation = try? c.decodeIfPresent(WeatherLocation.self, forKey: .weatherLocation)
+        weatherTop = (try? c.decodeIfPresent(Double.self, forKey: .weatherTop)) ?? d.weatherTop
         photoDimming = (try? c.decodeIfPresent(Double.self, forKey: .photoDimming)) ?? d.photoDimming
         calendarIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .calendarIDs)) ?? d.calendarIDs
         reminderListIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .reminderListIDs)) ?? d.reminderListIDs
     }
 
     enum TextSize: String, Codable, CaseIterable, Identifiable {
-        case small, medium, large
+        case tiny, small, medium, large
         var id: String { rawValue }
 
         var label: String {
             switch self {
+            case .tiny: "Sehr klein"
             case .small: "Klein"
             case .medium: "Mittel"
             case .large: "Groß"
@@ -59,9 +66,10 @@ struct WallpaperSettings: Codable, Hashable {
         /// Base font size in points for an event title.
         var points: Double {
             switch self {
-            case .small: 15
-            case .medium: 18
-            case .large: 22
+            case .tiny: 12
+            case .small: 13.5
+            case .medium: 15.5
+            case .large: 19
             }
         }
     }

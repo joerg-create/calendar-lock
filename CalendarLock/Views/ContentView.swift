@@ -442,6 +442,10 @@ private struct WeatherSection: View {
                 if let location = settings.weatherLocation {
                     LabeledContent("Ort", value: location.name)
                 }
+                VStack(alignment: .leading) {
+                    Text("Abstand zur Uhr")
+                    Slider(value: $settings.weatherTop, in: WallpaperSettings.weatherTopRange)
+                }
                 HStack {
                     TextField("Ort suchen, z. B. Hamburg", text: $query)
                         .textInputAutocapitalization(.words)
@@ -469,7 +473,7 @@ private struct WeatherSection: View {
         } header: {
             Text("Wetter")
         } footer: {
-            Text("Das Wetter steht direkt unter der Uhr. Wetterdaten von Open-Meteo.com (CC BY 4.0).")
+            Text("Das Wetter steht direkt unter der Uhr. Hast du Widgets auf dem Sperrbildschirm, schieb den Regler etwas nach rechts. Wetterdaten von Open-Meteo.com (CC BY 4.0).")
         }
     }
 
