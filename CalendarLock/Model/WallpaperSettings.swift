@@ -19,6 +19,9 @@ struct WallpaperSettings: Codable, Hashable {
     /// Where the weather row starts, as a fraction of the screen height.
     /// Right below the clock is about 0.27; with Lock Screen widgets about 0.35.
     var weatherTop: Double = 0.28
+    /// Name of the user's shortcut in the Shortcuts app that creates and sets
+    /// the wallpaper; the "Jetzt setzen" button starts it.
+    var shortcutName: String = "Calendar Lock"
     /// How much an own photo is darkened behind the text, 0...1.
     var photoDimming: Double = 0.5
     static let maxDaysAhead = 4
@@ -47,6 +50,7 @@ struct WallpaperSettings: Codable, Hashable {
         showWeather = (try? c.decodeIfPresent(Bool.self, forKey: .showWeather)) ?? d.showWeather
         weatherLocation = try? c.decodeIfPresent(WeatherLocation.self, forKey: .weatherLocation)
         weatherTop = (try? c.decodeIfPresent(Double.self, forKey: .weatherTop)) ?? d.weatherTop
+        shortcutName = (try? c.decodeIfPresent(String.self, forKey: .shortcutName)) ?? d.shortcutName
         photoDimming = (try? c.decodeIfPresent(Double.self, forKey: .photoDimming)) ?? d.photoDimming
         calendarIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .calendarIDs)) ?? d.calendarIDs
         reminderListIDs = (try? c.decodeIfPresent(Set<String>.self, forKey: .reminderListIDs)) ?? d.reminderListIDs

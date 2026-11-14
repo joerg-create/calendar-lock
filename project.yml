@@ -17,6 +17,13 @@ targets:
     platform: iOS
     sources:
       - CalendarLock
+    info:
+      path: CalendarLock/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: de.joerg.calendarlock
+            CFBundleURLSchemes:
+              - calendarlock
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.joerg.calendarlock

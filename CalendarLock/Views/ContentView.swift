@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var photos: [PhotoEntry] = PhotoStore.entries()
     @State private var editingPhoto: PhotoEntry?
+    @State private var shortcutMessage: String?
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -24,7 +26,7 @@ struct ContentView: View {
                     extrasSection
                     WeatherSection(settings: $settings)
                     sourcesSection
-                    SetupGuideSection()
+                    SetupGuideSection(shortcutName: $settings.shortcutName)
                 } else {
                     AccessSection {
                         Task { await requestAccess() }
@@ -37,6 +39,14 @@ struct ContentView: View {
         .task(id: settings) {
             settings.save()
             await renderPreview()
+        }
+        .onOpenURL { url in
+            switch ShortcutRunner.result(from: url) {
+            case .done: shortcutMessage = "Sperrbildschirm aktualisiert."
+            case .cancel: shortcutMessage = "Abgebrochen."
+            case .error: shortcutMessage = "Der Kurzbefehl „\(settings.shortcutName)“ wurde nicht gefunden oder ist fehlgeschlagen. Sieh unten unter „Einrichtung“ nach."
+            case nil: break
+            }
         }
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
@@ -85,6 +95,22 @@ struct ContentView: View {
                     Text(errorText).foregroundStyle(.secondary)
                 } else {
                     ProgressView().frame(height: 200)
+                }
+
+                Button {
+                    runShortcut()
+                } label: {
+                    Label("Jetzt auf Sperrbildschirm setzen", systemImage: "lock.rotation")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(preview == nil)
+
+                if let shortcutMessage {
+                    Text(shortcutMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
 
                 if let preview {
@@ -222,6 +248,17 @@ struct ContentView: View {
         await renderPreview()
     }
 
+    private func runShortcut() {
+        guard let url = ShortcutRunner.runURL(shortcutName: settings.shortcutName) else {
+            shortcutMessage = "Trag unten unter „Einrichtung“ den Namen deines Kurzbefehls ein."
+            return
+        }
+        shortcutMessage = nil
+        openURL(url) { accepted in
+            if !accepted { shortcutMessage = "Die Kurzbefehle-App konnte nicht geöffnet werden." }
+        }
+    }
+
     private func addPhotos(_ items: [PhotosPickerItem]) async {
         var failed = 0
         for item in items {
@@ -324,21 +361,27 @@ private struct AccessSection: View {
 }
 
 private struct SetupGuideSection: View {
+    @Binding var shortcutName: String
     @Environment(\.openURL) private var openURL
 
     var body: some View {
         Section {
-            step(1, "Öffne die Kurzbefehle-App und tippe auf „Automation“ › „+“ › „Tageszeit“.")
-            step(2, "Wähle eine Uhrzeit, z. B. 6:00 Uhr, täglich, und „Sofort ausführen“.")
-            step(3, "Füge die Aktion „Kalender-Hintergrund erstellen“ von Calendar Lock hinzu.")
-            step(4, "Füge danach „Hintergrundbild festlegen“ hinzu, wähle deinen Sperrbildschirm und schalte „Vorschau zeigen“ aus.")
+            step(1, "Öffne die Kurzbefehle-App, tippe unter „Kurzbefehle“ auf „+“ und nenne den neuen Kurzbefehl so wie unten eingetragen.")
+            step(2, "Füge die Aktion „Kalender-Hintergrund erstellen“ von Calendar Lock hinzu.")
+            step(3, "Füge danach „Hintergrundbild festlegen“ hinzu, wähle einen Fotos-Sperrbildschirm und schalte „Vorschau zeigen“ und „Motiv freistellen“ aus.")
+            step(4, "Unter „Automation“ › „+“ › „Tageszeit“ eine Uhrzeit wählen, „Sofort ausführen“, und als einzige Aktion „Kurzbefehl ausführen“ mit diesem Kurzbefehl.")
+            LabeledContent("Name des Kurzbefehls") {
+                TextField("Calendar Lock", text: $shortcutName)
+                    .multilineTextAlignment(.trailing)
+                    .autocorrectionDisabled()
+            }
             Button("Kurzbefehle öffnen") {
                 if let url = URL(string: "shortcuts://") { openURL(url) }
             }
         } header: {
-            Text("Automatisch jeden Morgen")
+            Text("Einrichtung")
         } footer: {
-            Text("iOS erlaubt Apps nicht, das Hintergrundbild selbst zu wechseln. Die Automation erledigt das einmal am Tag. Du kannst sie auch mehrmals am Tag laufen lassen.")
+            Text("iOS erlaubt Apps nicht, das Hintergrundbild selbst zu wechseln. Das macht dein Kurzbefehl: morgens über die Automation und jederzeit über „Jetzt auf Sperrbildschirm setzen“. Der Knopf kann nur einen Kurzbefehl starten, keine Automation.")
         }
     }
 
