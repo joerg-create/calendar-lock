@@ -40,4 +40,22 @@ final class UpcomingDaysTests: XCTestCase {
         let settings = try JSONDecoder().decode(WallpaperSettings.self, from: Data(old.utf8))
         XCTAssertEqual(settings.daysAhead, 3)
     }
+
+    func testSplitKeepsRoomForOneItemOnEachSide() {
+        // With several items on both sides, each side needs 2 rows: one item
+        // and "+ N weitere". A single row could only show "+ N weitere".
+        let four = AgendaLayout.splitRows(total: 4, todayCount: 3, upcomingCount: 9)
+        XCTAssertEqual(four.today, 2)
+        XCTAssertEqual(four.upcoming, 2)
+    }
+
+    func testSplitLeavesOutComingDaysWhenThereIsNoRoom() {
+        let result = AgendaLayout.splitRows(total: 3, todayCount: 3, upcomingCount: 9)
+        XCTAssertEqual(result.today, 3)
+        XCTAssertEqual(result.upcoming, 0)
+        // One event on each side fits in two rows.
+        let single = AgendaLayout.splitRows(total: 2, todayCount: 1, upcomingCount: 1)
+        XCTAssertEqual(single.today, 1)
+        XCTAssertEqual(single.upcoming, 1)
+    }
 }

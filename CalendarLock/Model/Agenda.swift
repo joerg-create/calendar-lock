@@ -77,7 +77,8 @@ enum AgendaLayout {
     static func fit(_ items: [AgendaItem], maxRows: Int) -> (visible: [AgendaItem], hidden: Int) {
         guard maxRows > 0 else { return ([], items.count) }
         if items.count <= maxRows { return (items, 0) }
-        let visibleCount = max(maxRows - 1, 0)
+        // Never show only "+ N weitere": with a single row, show one item anyway.
+        let visibleCount = max(maxRows - 1, 1)
         return (Array(items.prefix(visibleCount)), items.count - visibleCount)
     }
 
@@ -105,13 +106,23 @@ enum AgendaLayout {
         return (rows, fitted.hidden)
     }
 
+    /// Rows a list needs to show at least one item: one, plus one for
+    /// "+ N weitere" when there is more than one item.
+    static func rowsToShowOne(_ count: Int) -> Int { count > 1 ? 2 : 1 }
+
     /// Splits the available rows between today and the coming days: today gets
     /// what it needs, but at most about half when coming days have events too.
+    /// Each part gets enough rows to show at least one item. When there is not
+    /// room for that, the coming days get no rows and are left out.
     static func splitRows(total: Int, todayCount: Int, upcomingCount: Int) -> (today: Int, upcoming: Int) {
         let total = max(total, 1)
         guard upcomingCount > 0 else { return (total, 0) }
-        let todayShare = max(1, min(max(todayCount, 1), Int((Double(total) * 0.5).rounded(.up))))
-        return (todayShare, max(total - todayShare, 1))
+        let todayMinimum = rowsToShowOne(todayCount)
+        let upcomingMinimum = rowsToShowOne(upcomingCount)
+        guard total >= todayMinimum + upcomingMinimum else { return (total, 0) }
+        let half = Int((Double(total) * 0.5).rounded(.up))
+        let todayShare = min(max(todayMinimum, min(max(todayCount, 1), half)), total - upcomingMinimum)
+        return (todayShare, total - todayShare)
     }
 }
 

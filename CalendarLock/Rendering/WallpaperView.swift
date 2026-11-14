@@ -100,7 +100,7 @@ struct WallpaperView: View {
 
                 VStack(alignment: .leading, spacing: fontSize * 0.9) {
                     section(for: content.today, title: "Heute", maxRows: rowBudget.today)
-                    if hasUpcoming {
+                    if hasUpcoming && rowBudget.upcoming > 0 {
                         Divider().overlay(textColor.opacity(0.25))
                         upcomingSection(maxRows: rowBudget.upcoming)
                     }
@@ -148,6 +148,9 @@ struct WallpaperView: View {
                 Text(agenda.date.formatted(.dateTime.weekday(.wide).day().month(.wide)))
                     .font(.system(size: fontSize * 0.85, weight: .medium, design: .rounded))
                     .opacity(0.7)
+                    // Keep the header on one line, the row budget counts it as one.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 if settings.showWeekNumber && showsWeekNumber(for: agenda) {
                     Spacer(minLength: 0)
                     Text("KW \(MonthGrid.weekNumber(of: agenda.date))")
@@ -280,13 +283,22 @@ struct WallpaperView: View {
     private var rowBudget: (today: Int, upcoming: Int) {
         let rowStep = fontSize * (Layout.rowHeightFactor + 0.45)
         let headerHeight = fontSize * 1.9
+        // `fit` reserves a full row for "+ N weitere", but that line is shorter.
+        let moreLineSaving = rowStep - fontSize * 1.5
         var available = size.height * (Layout.contentBottom - contentTop) - fontSize * 2
         available -= monthHeight + headerHeight
-        if hasUpcoming { available -= headerHeight + fontSize * 1.8 }
-        let rows = max(Int(available / rowStep), 1)
+        func rows(in space: CGFloat, sections: Int) -> Int {
+            max(Int((space + moreLineSaving * CGFloat(sections)) / rowStep), 1)
+        }
         let todayCount = content.today.events.count + content.today.reminders.count
+        guard hasUpcoming else { return (rows(in: available, sections: 1), 0) }
+
         let upcomingCount = content.upcoming.reduce(0) { $0 + $1.events.count }
-        return AgendaLayout.splitRows(total: rows, todayCount: todayCount, upcomingCount: hasUpcoming ? upcomingCount : 0)
+        let total = rows(in: available - headerHeight - fontSize * 1.8, sections: 2)
+        let split = AgendaLayout.splitRows(total: total, todayCount: todayCount, upcomingCount: upcomingCount)
+        // Too little room for the coming days: leave them out and give today the space.
+        if split.upcoming == 0 { return (rows(in: available, sections: 1), 0) }
+        return split
     }
 }
 

@@ -62,4 +62,11 @@ final class AgendaLayoutTests: XCTestCase {
         settings.save(to: defaults)
         XCTAssertEqual(WallpaperSettings.load(from: defaults), settings)
     }
+
+    func testFitWithOneRowStillShowsOneItem() {
+        let items = (0..<5).map { item("\($0)", start: Double($0)) }
+        let result = AgendaLayout.fit(items, maxRows: 1)
+        XCTAssertEqual(result.visible.map(\.id), ["0"])
+        XCTAssertEqual(result.hidden, 4)
+    }
 }
