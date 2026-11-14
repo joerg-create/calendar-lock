@@ -1,0 +1,50 @@
+name: CalendarLock
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: de
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+targets:
+  CalendarLock:
+    type: application
+    platform: iOS
+    sources:
+      - CalendarLock
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.calendarlock
+        PRODUCT_NAME: CalendarLock
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Calendar Lock
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "Calendar Lock liest deine heutigen Termine, um sie auf dein Sperrbildschirm-Hintergrundbild zu zeichnen. Die Daten verlassen dein iPhone nicht."
+        INFOPLIST_KEY_NSRemindersFullAccessUsageDescription: "Calendar Lock liest deine offenen Erinnerungen, um sie auf dein Sperrbildschirm-Hintergrundbild zu zeichnen. Die Daten verlassen dein iPhone nicht."
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  CalendarLockTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - CalendarLockTests
+    dependencies:
+      - target: CalendarLock
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.calendarlock.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  CalendarLock:
+    build:
+      targets:
+        CalendarLock: all
+        CalendarLockTests: [test]
+    test:
+      targets:
+        - CalendarLockTests
