@@ -495,6 +495,10 @@ private struct WeatherSection: View {
                     LabeledContent("Ort", value: location.name)
                 }
                 VStack(alignment: .leading) {
+                    Text("Größe")
+                    Slider(value: $settings.weatherScale, in: WallpaperSettings.weatherScaleRange)
+                }
+                VStack(alignment: .leading) {
                     Text("Abstand zur Uhr")
                     Slider(value: $settings.weatherTop, in: WallpaperSettings.weatherTopRange)
                 }

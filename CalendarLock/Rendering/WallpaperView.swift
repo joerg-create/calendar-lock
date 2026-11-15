@@ -76,7 +76,10 @@ struct WallpaperView: View {
         usesPhoto ? Color.black.opacity(0.28) : Color.white.opacity(theme.cardOpacity)
     }
     private var showsWeather: Bool { settings.showWeather && !content.forecast.isEmpty }
-    private var weatherFontSize: CGFloat { fontSize * 0.82 }
+    private var weatherFontSize: CGFloat {
+        let range = WallpaperSettings.weatherScaleRange
+        return fontSize * CGFloat(min(max(settings.weatherScale, range.lowerBound), range.upperBound))
+    }
     private var weatherTop: CGFloat {
         CGFloat(min(max(settings.weatherTop, WallpaperSettings.weatherTopRange.lowerBound), WallpaperSettings.weatherTopRange.upperBound))
     }
