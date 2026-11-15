@@ -198,15 +198,20 @@ struct ContentView: View {
                     Text(theme.label).tag(theme)
                 }
             }
-            Picker("Schriftgröße", selection: $settings.textSize) {
-                ForEach(WallpaperSettings.TextSize.allCases) { size in
-                    Text(size.label).tag(size)
+            VStack(alignment: .leading, spacing: 4) {
+                LabeledContent("Schriftgröße", value: "\(Int(settings.fontPoints.rounded())) pt")
+                HStack {
+                    Image(systemName: "textformat.size.smaller")
+                    Slider(value: $settings.fontPoints, in: WallpaperSettings.fontPointsRange, step: 0.5)
+                    Image(systemName: "textformat.size.larger")
                 }
+                .foregroundStyle(.secondary)
             }
             Toggle("Erinnerungen anzeigen", isOn: $settings.showReminders)
             Stepper(value: $settings.daysAhead, in: 0...WallpaperSettings.maxDaysAhead) {
                 LabeledContent("Nächste Tage", value: settings.daysAhead == 0 ? "aus" : "\(settings.daysAhead)")
             }
+            Toggle("Monatskalender unten", isOn: $settings.showMonth)
             Toggle("Vergangene Termine ausblenden", isOn: $settings.hidePastEvents)
         }
     }
@@ -214,7 +219,6 @@ struct ContentView: View {
     private var extrasSection: some View {
         Section("Kalenderwochen") {
             Toggle("Kalenderwoche anzeigen", isOn: $settings.showWeekNumber)
-            Toggle("Monatsübersicht mit KW", isOn: $settings.showMonth)
         }
     }
 

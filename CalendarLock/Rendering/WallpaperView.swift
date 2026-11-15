@@ -64,7 +64,10 @@ struct WallpaperView: View {
     let size: CGSize
 
     private var theme: WallpaperTheme { settings.theme }
-    private var fontSize: CGFloat { CGFloat(settings.textSize.points) }
+    private var fontSize: CGFloat {
+        let range = WallpaperSettings.fontPointsRange
+        return CGFloat(min(max(settings.fontPoints, range.lowerBound), range.upperBound))
+    }
     private var margin: CGFloat { size.width * 0.06 }
     private var usesPhoto: Bool { settings.artwork == .photo && content.photo != nil }
     /// On a photo the text is always light, because the photo is darkened.

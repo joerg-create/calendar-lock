@@ -5,6 +5,9 @@ struct WallpaperSettings: Codable, Hashable {
     var theme: WallpaperTheme = .night
     var artwork: Artwork = .aurora
     var textSize: TextSize = .medium
+    /// Base font size in points, set with a slider. Replaces `textSize`,
+    /// which is only read to carry over older settings.
+    var fontPoints: Double = 15.5
     var showReminders: Bool = true
     /// How many days after today are listed under "Nächste Tage" (0...4).
     var daysAhead: Int = 3
@@ -25,6 +28,7 @@ struct WallpaperSettings: Codable, Hashable {
     /// How much an own photo is darkened behind the text, 0...1.
     var photoDimming: Double = 0.5
     static let maxDaysAhead = 4
+    static let fontPointsRange: ClosedRange<Double> = 10...22
     static let weatherTopRange: ClosedRange<Double> = 0.22...0.42
 
     /// Calendar identifiers to show. Empty means every calendar.
@@ -42,6 +46,7 @@ struct WallpaperSettings: Codable, Hashable {
         theme = (try? c.decodeIfPresent(WallpaperTheme.self, forKey: .theme)) ?? d.theme
         artwork = (try? c.decodeIfPresent(Artwork.self, forKey: .artwork)) ?? d.artwork
         textSize = (try? c.decodeIfPresent(TextSize.self, forKey: .textSize)) ?? d.textSize
+        fontPoints = (try? c.decodeIfPresent(Double.self, forKey: .fontPoints)) ?? textSize.points
         showReminders = (try? c.decodeIfPresent(Bool.self, forKey: .showReminders)) ?? d.showReminders
         daysAhead = min(max((try? c.decodeIfPresent(Int.self, forKey: .daysAhead)) ?? d.daysAhead, 0), Self.maxDaysAhead)
         hidePastEvents = (try? c.decodeIfPresent(Bool.self, forKey: .hidePastEvents)) ?? d.hidePastEvents
