@@ -89,6 +89,31 @@ final class CalendarService {
         )
     }
 
+    /// Events from `start` for `days` days, grouped by start of day. Events that
+    /// span several days are listed on each of them.
+    func eventsByDay(from start: Date, days: Int, settings: WallpaperSettings) -> [Date: [AgendaItem]] {
+        let calendar = Calendar.current
+        let first = calendar.startOfDay(for: start)
+        guard hasEventAccess, days > 0,
+              let end = calendar.date(byAdding: .day, value: days, to: first)
+        else { return [:] }
+        let calendars = filtered(store.calendars(for: .event), by: settings.calendarIDs)
+        guard !calendars.isEmpty else { return [:] }
+        let predicate = store.predicateForEvents(withStart: first, end: end, calendars: calendars)
+        var result: [Date: [AgendaItem]] = [:]
+        for event in store.events(matching: predicate) {
+            let item = Self.item(event)
+            var day = calendar.startOfDay(for: max(event.startDate, first))
+            let last = min(event.endDate, end)
+            repeat {
+                result[day, default: []].append(item)
+                guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                day = next
+            } while day < last
+        }
+        return result.mapValues(AgendaLayout.sortedEvents)
+    }
+
     /// Start-of-day dates in the month of `date` that have at least one event,
     /// for the dots in the month overview.
     func daysWithEvents(inMonthOf date: Date, settings: WallpaperSettings) -> Set<Date> {

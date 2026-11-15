@@ -29,13 +29,19 @@ enum WallpaperBuilder {
             now: now,
             today: await service.agenda(for: now, settings: settings, includeReminders: true, now: now)
         )
-        if settings.daysAhead > 0 {
+        if settings.layout == .list, settings.daysAhead > 0 {
             for offset in 1...min(settings.daysAhead, WallpaperSettings.maxDaysAhead) {
                 guard let day = Calendar.current.date(byAdding: .day, value: offset, to: now) else { continue }
                 content.upcoming.append(await service.agenda(for: day, settings: settings, includeReminders: false, now: now))
             }
         }
-        if settings.showMonth {
+        if settings.layout == .month {
+            let grid = MonthGrid.rolling(from: now, weeks: MonthCalendarView.weekCount)
+            content.calendar = grid
+            if let start = grid.weeks.first?.days.first ?? nil {
+                content.eventsByDay = service.eventsByDay(from: start, days: grid.weeks.count * 7, settings: settings)
+            }
+        } else if settings.showMonth {
             content.month = MonthGrid.make(for: now)
             content.eventDays = service.daysWithEvents(inMonthOf: now, settings: settings)
         }

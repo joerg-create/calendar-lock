@@ -50,4 +50,18 @@ struct MonthGrid: Hashable {
         }
         return MonthGrid(month: monthStart, weeks: weeks)
     }
+
+    /// `weeks` full weeks starting with the Monday of the week that contains
+    /// `date`, so the coming weeks stay visible at the end of a month.
+    static func rolling(from date: Date, weeks: Int, calendar: Calendar = isoCalendar) -> MonthGrid {
+        let start = calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+        var result: [Week] = []
+        for week in 0..<max(weeks, 1) {
+            let days: [Date?] = (0..<7).map { calendar.date(byAdding: .day, value: week * 7 + $0, to: start) }
+            let first = days.compactMap { $0 }.first ?? start
+            result.append(Week(number: weekNumber(of: first, calendar: calendar), days: days))
+        }
+        return MonthGrid(month: start, weeks: result)
+    }
 }
+

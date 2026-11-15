@@ -15,6 +15,9 @@ struct WallpaperContent {
     var eventDays: Set<Date> = []
     var photo: UIImage?
     var photoFraming = PhotoEntry()
+    /// Weeks and events for the "Monatskalender" layout.
+    var calendar: MonthGrid?
+    var eventsByDay: [Date: [AgendaItem]] = [:]
 
     static func sample(now: Date = Date()) -> WallpaperContent {
         func event(_ id: String, _ title: String, hours: Double, allDay: Bool = false, _ color: RGBColor) -> AgendaItem {
@@ -64,7 +67,10 @@ struct WallpaperView: View {
     let size: CGSize
 
     private var theme: WallpaperTheme { settings.theme }
-    private var fontSize: CGFloat { CGFloat(settings.textSize.points) }
+    private var fontSize: CGFloat {
+        let range = WallpaperSettings.fontPointsRange
+        return CGFloat(min(max(settings.fontPoints, range.lowerBound), range.upperBound))
+    }
     private var margin: CGFloat { size.width * 0.06 }
     private var usesPhoto: Bool { settings.artwork == .photo && content.photo != nil }
     /// On a photo the text is always light, because the photo is darkened.
@@ -98,24 +104,35 @@ struct WallpaperView: View {
 
             VStack(spacing: fontSize * Layout.blockSpacing) {
 
-                VStack(alignment: .leading, spacing: fontSize * 0.9) {
-                    section(for: content.today, title: "Heute", maxRows: rowBudget.today)
-                    if hasUpcoming && rowBudget.upcoming > 0 {
-                        Divider().overlay(textColor.opacity(0.25))
-                        upcomingSection(maxRows: rowBudget.upcoming)
-                    }
-                }
-                .padding(fontSize)
-                .frame(width: size.width - 2 * margin, alignment: .leading)
-                .background(card)
-
-                if showsMonth, let month = content.month {
-                    MonthOverview(grid: month, today: content.now, eventDays: content.eventDays,
-                                  fontSize: fontSize * 0.78, textColor: textColor,
-                                  highlightText: (!usesPhoto && theme.isLight) ? .white : .black.opacity(0.85))
-                        .padding(fontSize * 0.8)
-                        .frame(width: size.width - 2 * margin)
+                if settings.layout == .month, let grid = content.calendar {
+                    MonthCalendarView(grid: grid, today: content.now, eventsByDay: content.eventsByDay,
+                                      fontSize: fontSize, textColor: textColor,
+                                      highlightText: (!usesPhoto && theme.isLight) ? .white : .black.opacity(0.85),
+                                      showsWeekNumbers: settings.showWeekNumber)
+                        .padding(fontSize * 0.55)
+                        .frame(width: size.width - 2 * margin,
+                               height: size.height * (Layout.contentBottom - contentTop))
                         .background(card)
+                } else {
+                    VStack(alignment: .leading, spacing: fontSize * 0.9) {
+                        section(for: content.today, title: "Heute", maxRows: rowBudget.today)
+                        if hasUpcoming && rowBudget.upcoming > 0 {
+                            Divider().overlay(textColor.opacity(0.25))
+                            upcomingSection(maxRows: rowBudget.upcoming)
+                        }
+                    }
+                    .padding(fontSize)
+                    .frame(width: size.width - 2 * margin, alignment: .leading)
+                    .background(card)
+
+                    if showsMonth, let month = content.month {
+                        MonthOverview(grid: month, today: content.now, eventDays: content.eventDays,
+                                      fontSize: fontSize * 0.78, textColor: textColor,
+                                      highlightText: (!usesPhoto && theme.isLight) ? .white : .black.opacity(0.85))
+                            .padding(fontSize * 0.8)
+                            .frame(width: size.width - 2 * margin)
+                            .background(card)
+                    }
                 }
             }
             .padding(.top, size.height * contentTop)
@@ -299,6 +316,139 @@ struct WallpaperView: View {
         // Too little room for the coming days: leave them out and give today the space.
         if split.upcoming == 0 { return (rows(in: available, sections: 1), 0) }
         return split
+    }
+}
+
+/// The "Monatskalender" layout: five weeks from the current week with the
+/// appointments written into the day cells, as many as fit.
+struct MonthCalendarView: View {
+    static let weekCount = 5
+
+    let grid: MonthGrid
+    let today: Date
+    let eventsByDay: [Date: [AgendaItem]]
+    let fontSize: CGFloat
+    let textColor: Color
+    let highlightText: Color
+    let showsWeekNumbers: Bool
+
+    private let weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    private var eventFont: CGFloat { max(fontSize * 0.56, 7.5) }
+    private var lineHeight: CGFloat { eventFont * 1.32 }
+
+    var body: some View {
+        let calendar = Calendar.current
+        GeometryReader { proxy in
+            let headerHeight = fontSize * 1.5 + fontSize * 1.1
+            let cellHeight = max((proxy.size.height - headerHeight) / CGFloat(grid.weeks.count), lineHeight * 2)
+            let weekColumn = showsWeekNumbers ? fontSize * 1.3 : 0
+            let cellWidth = (proxy.size.width - weekColumn) / 7
+
+            VStack(spacing: 0) {
+                Text(title)
+                    .font(.system(size: fontSize * 1.0, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: fontSize * 1.5, alignment: .top)
+
+                HStack(spacing: 0) {
+                    if showsWeekNumbers {
+                        Text("KW")
+                            .frame(width: weekColumn)
+                            .opacity(0.5)
+                    }
+                    ForEach(weekdays, id: \.self) { day in
+                        Text(day).frame(width: cellWidth).opacity(0.65)
+                    }
+                }
+                .font(.system(size: fontSize * 0.62, weight: .semibold, design: .rounded))
+                .frame(height: fontSize * 1.1)
+
+                ForEach(grid.weeks, id: \.number) { week in
+                    HStack(spacing: 0) {
+                        if showsWeekNumbers {
+                            Text("\(week.number)")
+                                .font(.system(size: fontSize * 0.6, weight: .bold, design: .rounded).monospacedDigit())
+                                .opacity(0.5)
+                                .frame(width: weekColumn, height: cellHeight, alignment: .top)
+                                .padding(.top, fontSize * 0.2)
+                        }
+                        ForEach(0..<7, id: \.self) { index in
+                            if let day = week.days[index] {
+                                cell(day, calendar: calendar, width: cellWidth, height: cellHeight)
+                            }
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        Rectangle().fill(textColor.opacity(0.15)).frame(height: 0.5)
+                    }
+                }
+            }
+        }
+    }
+
+    private var title: String {
+        let first = grid.weeks.first?.days.first.flatMap { $0 } ?? today
+        let last = grid.weeks.last?.days.last.flatMap { $0 } ?? today
+        let start = first.formatted(.dateTime.month(.wide))
+        let end = last.formatted(.dateTime.month(.wide).year())
+        return start == last.formatted(.dateTime.month(.wide)) ? end : "\(start) – \(end)"
+    }
+
+    private func cell(_ day: Date, calendar: Calendar, width: CGFloat, height: CGFloat) -> some View {
+        let isToday = calendar.isDate(day, inSameDayAs: today)
+        let isPast = day < calendar.startOfDay(for: today)
+        let dayNumber = calendar.component(.day, from: day)
+        let events = eventsByDay[calendar.startOfDay(for: day)] ?? []
+        let numberHeight = fontSize * 0.95
+        let capacity = max(Int((height - numberHeight - 2) / lineHeight), 0)
+        let fitted = AgendaLayout.fit(events, maxRows: capacity)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 1) {
+                Text(dayNumber == 1 ? day.formatted(.dateTime.day().month(.abbreviated)) : "\(dayNumber)")
+                    .font(.system(size: fontSize * 0.66, weight: isToday ? .heavy : .semibold, design: .rounded).monospacedDigit())
+                    .lineLimit(1)
+                    .padding(.horizontal, isToday ? fontSize * 0.22 : 0)
+                    .foregroundStyle(isToday ? highlightText : textColor)
+                    .background(
+                        Capsule().fill(isToday ? textColor : .clear)
+                    )
+                Spacer(minLength: 0)
+            }
+            .frame(height: numberHeight)
+
+            ForEach(fitted.visible) { event in
+                Text(event.title)
+                    .font(.system(size: eventFont, weight: .medium, design: .rounded))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.horizontal, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: lineHeight - 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                            .fill(event.color.color.opacity(event.isAllDay ? 0.55 : 0.3))
+                    )
+                    .padding(.bottom, 1)
+            }
+            if fitted.hidden > 0 {
+                Text("+\(fitted.hidden)")
+                    .font(.system(size: eventFont, weight: .semibold, design: .rounded))
+                    .opacity(0.7)
+                    .frame(height: lineHeight, alignment: .leading)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 1.5)
+        .padding(.top, 2)
+        .frame(width: width, height: height, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .strokeBorder(isToday ? textColor.opacity(0.8) : .clear, lineWidth: 1.2)
+        )
+        .opacity(isPast ? 0.45 : 1)
     }
 }
 
