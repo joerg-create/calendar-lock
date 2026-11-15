@@ -78,7 +78,9 @@ struct WallpaperView: View {
     private var showsWeather: Bool { settings.showWeather && !content.forecast.isEmpty }
     private var weatherFontSize: CGFloat {
         let range = WallpaperSettings.weatherScaleRange
-        return fontSize * CGFloat(min(max(settings.weatherScale, range.lowerBound), range.upperBound))
+        let scaled = fontSize * CGFloat(min(max(settings.weatherScale, range.lowerBound), range.upperBound))
+        // Above about 1/14 of the screen width the five columns no longer fit.
+        return min(scaled, size.width / WeatherStrip.maxFontDivisor)
     }
     private var weatherTop: CGFloat {
         CGFloat(min(max(settings.weatherTop, WallpaperSettings.weatherTopRange.lowerBound), WallpaperSettings.weatherTopRange.upperBound))
@@ -316,6 +318,8 @@ struct WeatherStrip: View {
 
     /// Height of the strip in multiples of `fontSize`, used for the layout budget.
     static let heightFactor: CGFloat = 3.6
+    /// The strip's font size is capped at the screen width divided by this.
+    static let maxFontDivisor: CGFloat = 14
 
     var body: some View {
         HStack(spacing: 0) {
@@ -324,17 +328,24 @@ struct WeatherStrip: View {
                     Text(index == 0 ? "Heute" : day.date.formatted(.dateTime.weekday(.abbreviated)))
                         .font(.system(size: fontSize * 0.72, weight: .semibold, design: .rounded))
                         .opacity(0.8)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Image(systemName: day.symbolName)
                         .symbolRenderingMode(.multicolor)
                         .font(.system(size: fontSize * 1.15))
                         .frame(height: fontSize * 1.35)
-                    HStack(alignment: .firstTextBaseline, spacing: fontSize * 0.2) {
-                        Text("\(Int(day.high.rounded()))°")
-                            .font(.system(size: fontSize * 0.85, weight: .semibold, design: .rounded).monospacedDigit())
-                        Text("\(Int(day.low.rounded()))°")
-                            .font(.system(size: fontSize * 0.72, weight: .regular, design: .rounded).monospacedDigit())
-                            .foregroundStyle(textColor.opacity(0.6))
-                    }
+                    // One text, so a long pair like "-12° -15°" shrinks as a whole
+                    // instead of turning into "…".
+                    (Text("\(Int(day.high.rounded()))°")
+                        .font(.system(size: fontSize * 0.85, weight: .semibold, design: .rounded).monospacedDigit())
+                     + Text(" \(Int(day.low.rounded()))°")
+                        .font(.system(size: fontSize * 0.72, weight: .regular, design: .rounded).monospacedDigit())
+                        .foregroundStyle(textColor.opacity(0.6)))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .padding(.horizontal, fontSize * 0.1)
+                        // Fixed height keeps all columns aligned when some shrink.
+                        .frame(height: fontSize * 1.1)
                 }
                 .frame(maxWidth: .infinity)
             }
