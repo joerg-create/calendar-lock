@@ -27,6 +27,8 @@ struct WallpaperBackground: View {
     var framing = PhotoEntry()
     /// How much a photo is darkened, 0...1.
     var dimming: Double = 0.5
+    /// Today's WMO weather code for the "Wetter" motif; nil when unknown.
+    var weatherCode: Int?
     /// Changes the random layout; the wallpaper uses the day of the year,
     /// so the motif shifts a little every day.
     var seed: UInt64 = 1
@@ -58,6 +60,12 @@ struct WallpaperBackground: View {
             Canvas { context, size in drawWaves(in: &context, size: size) }
         case .bokeh:
             Canvas { context, size in drawBokeh(in: &context, size: size) }
+        case .weather:
+            if let weatherCode {
+                WeatherSceneView(scene: WeatherScene(code: weatherCode), seed: seed)
+            } else {
+                Canvas { context, size in drawAurora(in: &context, size: size) }
+            }
         case .photo:
             if let photo {
                 PhotoFill(image: photo, framing: framing)

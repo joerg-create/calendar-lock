@@ -39,8 +39,11 @@ enum WallpaperBuilder {
             content.month = MonthGrid.make(for: now)
             content.eventDays = service.daysWithEvents(inMonthOf: now, settings: settings)
         }
-        if settings.showWeather, let location = settings.weatherLocation {
+        if settings.showWeather || settings.artwork == .weather, let location = settings.weatherLocation {
             content.forecast = await WeatherService.forecast(for: location, days: 5, now: now)
+            if let first = content.forecast.first, Calendar.current.isDate(first.date, inSameDayAs: now) {
+                content.weatherCode = first.code
+            }
         }
         if settings.artwork == .photo, let photo = PhotoStore.photo(for: now) {
             content.photo = photo.image

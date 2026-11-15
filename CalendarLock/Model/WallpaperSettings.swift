@@ -109,7 +109,7 @@ extension WallpaperSettings {
 /// The picture behind the agenda. All motifs are drawn in code from the
 /// theme's colors; `.photo` uses a picture the user picked.
 enum Artwork: String, Codable, CaseIterable, Identifiable {
-    case plain, aurora, dunes, stars, waves, bokeh, photo
+    case plain, aurora, dunes, stars, waves, bokeh, weather, photo
 
     var id: String { rawValue }
 
@@ -121,6 +121,7 @@ enum Artwork: String, Codable, CaseIterable, Identifiable {
         case .stars: "Sterne"
         case .waves: "Wellen"
         case .bokeh: "Lichter"
+        case .weather: "Wetter"
         case .photo: "Eigene Fotos"
         }
     }

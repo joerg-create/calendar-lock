@@ -15,6 +15,8 @@ struct WallpaperContent {
     var eventDays: Set<Date> = []
     var photo: UIImage?
     var photoFraming = PhotoEntry()
+    /// Today's weather code, for the "Wetter" background.
+    var weatherCode: Int?
 
     static func sample(now: Date = Date()) -> WallpaperContent {
         func event(_ id: String, _ title: String, hours: Double, allDay: Bool = false, _ color: RGBColor) -> AgendaItem {
@@ -69,7 +71,10 @@ struct WallpaperView: View {
         return CGFloat(min(max(settings.fontPoints, range.lowerBound), range.upperBound))
     }
     private var margin: CGFloat { size.width * 0.06 }
-    private var usesPhoto: Bool { settings.artwork == .photo && content.photo != nil }
+    /// Photos and weather skies get light text on darkened cards, whatever the theme.
+    private var usesPhoto: Bool {
+        (settings.artwork == .photo && content.photo != nil) || (settings.artwork == .weather && content.weatherCode != nil)
+    }
     /// On a photo the text is always light, because the photo is darkened.
     private var textColor: Color { usesPhoto ? .white : theme.text.color }
     private var cardFill: Color {
@@ -102,7 +107,8 @@ struct WallpaperView: View {
     var body: some View {
         ZStack(alignment: .top) {
             WallpaperBackground(theme: theme, artwork: settings.artwork, photo: content.photo,
-                                framing: content.photoFraming, dimming: settings.photoDimming, seed: daySeed)
+                                framing: content.photoFraming, dimming: settings.photoDimming,
+                                weatherCode: content.weatherCode, seed: daySeed)
 
             VStack(spacing: fontSize * Layout.blockSpacing) {
 

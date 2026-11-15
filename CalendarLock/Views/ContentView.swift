@@ -153,6 +153,7 @@ struct ContentView: View {
                             artwork: artwork,
                             theme: settings.theme,
                             photo: artwork == .photo ? photos.first.flatMap(PhotoStore.thumbnail(for:)) : nil,
+                            weatherCode: artwork == .weather ? todaysWeatherCode : nil,
                             isSelected: settings.artwork == artwork
                         )
                         .onTapGesture { settings.artwork = artwork }
@@ -177,7 +178,11 @@ struct ContentView: View {
         } header: {
             Text("Hintergrund")
         } footer: {
-            if settings.artwork == .photo {
+            if settings.artwork == .weather {
+                Text(settings.weatherLocation == nil
+                     ? "Wähle unten unter „Wetter“ deinen Ort. Dann zeigt der Hintergrund jeden Tag das Wetter von heute: Sonne, Wolken, Regen, Schnee, Nebel oder Gewitter."
+                     : "Der Hintergrund zeigt jeden Tag das Wetter von heute in \(settings.weatherLocation?.name ?? "deinem Ort").")
+            } else if settings.artwork == .photo {
                 Text(photos.count > 1
                      ? "Jeden Tag kommt das nächste Foto dran. Tippe auf ein Foto, um den Ausschnitt zu verschieben oder es zu entfernen."
                      : "Tippe auf das Foto, um den Ausschnitt zu verschieben. Mit mehreren Fotos wechselt der Hintergrund jeden Tag.")
@@ -185,6 +190,11 @@ struct ContentView: View {
                 Text("Die Motive verändern sich jeden Tag ein wenig. Ihre Farben kommen vom Farbthema.")
             }
         }
+    }
+
+    /// Today's weather code from the last downloaded forecast, for the thumbnail.
+    private var todaysWeatherCode: Int? {
+        ForecastCache.load()?.days(from: Date(), count: 1).first?.code ?? 2
     }
 
     private var todaysPhotoID: UUID? {
@@ -408,12 +418,13 @@ private struct ArtworkThumbnail: View {
     let artwork: Artwork
     let theme: WallpaperTheme
     let photo: UIImage?
+    var weatherCode: Int? = nil
     let isSelected: Bool
 
     var body: some View {
         VStack(spacing: 6) {
             ZStack {
-                WallpaperBackground(theme: theme, artwork: artwork, photo: photo, seed: 7)
+                WallpaperBackground(theme: theme, artwork: artwork, photo: photo, weatherCode: weatherCode, seed: 7)
                 if artwork == .photo && photo == nil {
                     Image(systemName: "photo.badge.plus")
                         .font(.title2)
