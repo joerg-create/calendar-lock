@@ -48,11 +48,13 @@ struct WeatherSceneView: View {
         var random = SeededRandom(seed: seed &+ 101)
         switch scene {
         case .clear:
-            sun(in: &context, size: size, at: CGPoint(x: size.width * 0.78, y: size.height * 0.16), strength: 1)
+            // Top right, above the Lock Screen clock, so the clock stays readable.
+            sun(in: &context, size: size, at: CGPoint(x: size.width * 0.84, y: size.height * 0.08), strength: 1)
             haze(in: &context, size: size, color: Color(red: 1, green: 0.75, blue: 0.5), y: 0.95, opacity: 0.35)
         case .partlyCloudy:
-            sun(in: &context, size: size, at: CGPoint(x: size.width * 0.75, y: size.height * 0.15), strength: 0.8)
-            clouds(in: &context, size: size, random: &random, count: 5, color: .white, opacity: 0.75, band: 0.05...0.55)
+            sun(in: &context, size: size, at: CGPoint(x: size.width * 0.84, y: size.height * 0.08), strength: 0.8)
+            // Clouds below the clock area: white clouds behind the white clock make it hard to read.
+            clouds(in: &context, size: size, random: &random, count: 6, color: .white, opacity: 0.6, band: 0.32...0.9)
         case .cloudy:
             clouds(in: &context, size: size, random: &random, count: 9, color: Color(white: 0.82), opacity: 0.55, band: 0.0...0.75)
             clouds(in: &context, size: size, random: &random, count: 6, color: Color(white: 0.95), opacity: 0.35, band: 0.1...0.9)
@@ -148,12 +150,15 @@ struct WeatherSceneView: View {
                                           width: size.width * 1.6, height: size.height * 0.3)), with: .color(color))
     }
 
+    /// A bolt at the right edge, kept above the weather row and beside the clock,
+    /// so it never runs through the agenda.
     private func lightning(in context: inout GraphicsContext, size: CGSize, random: inout SeededRandom) {
-        var point = CGPoint(x: size.width * random.range(0.55, 0.8), y: size.height * 0.2)
+        var point = CGPoint(x: size.width * random.range(0.84, 0.9), y: size.height * 0.04)
         var path = Path()
         path.move(to: point)
-        while point.y < size.height * 0.62 {
-            point = CGPoint(x: point.x + random.range(-28, 22), y: point.y + random.range(25, 55))
+        while point.y < size.height * 0.25 {
+            point = CGPoint(x: point.x + size.width * random.range(-0.05, 0.035),
+                            y: point.y + size.height * random.range(0.025, 0.045))
             path.addLine(to: point)
         }
         var glow = context
