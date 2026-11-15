@@ -241,7 +241,7 @@ struct WallpaperView: View {
             Text(timeLabel(for: item))
                 .font(.system(size: fontSize * 0.85, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(item.isOverdue ? Color(red: 1, green: 0.42, blue: 0.38) : textColor.opacity(0.75))
-                .frame(width: fontSize * 4.2, alignment: .leading)
+                .frame(width: max(fontSize * 4.2, 50), alignment: .leading)
 
             Text(item.title)
                 .font(.system(size: fontSize, weight: .medium, design: .rounded))
