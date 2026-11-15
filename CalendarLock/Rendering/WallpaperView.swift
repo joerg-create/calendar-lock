@@ -78,7 +78,9 @@ struct WallpaperView: View {
     /// On a photo the text is always light, because the photo is darkened.
     private var textColor: Color { usesPhoto ? .white : theme.text.color }
     private var cardFill: Color {
-        usesPhoto ? Color.black.opacity(0.28) : Color.white.opacity(theme.cardOpacity)
+        guard usesPhoto else { return Color.white.opacity(theme.cardOpacity) }
+        // The bright weather skies need a slightly darker card than photos for white text.
+        return Color.black.opacity(settings.artwork == .weather ? 0.36 : 0.28)
     }
     private var showsWeather: Bool { settings.showWeather && !content.forecast.isEmpty }
     private var weatherFontSize: CGFloat {
